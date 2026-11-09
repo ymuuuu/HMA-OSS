@@ -7,6 +7,7 @@ import com.v7878.unsafe.invoke.EmulatedStackFrame
 import icu.nullptr.hidemyapplist.common.Utils.generateRandomHex
 import org.frknkrc44.hma_oss.common.BuildConfig
 import org.frknkrc44.hma_oss.zygote.service.ReturnValue
+import org.frknkrc44.hma_oss.zygote.service.SystemServerHook
 import org.frknkrc44.hma_oss.zygote.util.CollectionUtils.firstOrNullWithType
 import org.frknkrc44.hma_oss.zygote.util.Logcat.logD
 import org.frknkrc44.hma_oss.zygote.util.Logcat.logI
@@ -61,8 +62,15 @@ class BroadcastHook : IFrameworkHook {
             }
 
             // replace USB state receiver
+            //
+            // Pick the class by presence, not by SDK level: some Android 15 builds (seen on
+            // Pixel 6a BP1A.250505.005, API 35) already route broadcasts through
+            // BroadcastController. There, ActivityManagerService keeps only a short
+            // broadcastIntentLocked overload that system broadcasts such as the sticky
+            // USB_STATE from UsbDeviceManager never pass through, so hooking AMS left the
+            // "adb" extra in place.
             hookBefore(
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+                if (hasBroadcastController()) {
                     BROADCAST_CONTROLLER_CLASS
                 } else {
                     ACTIVITY_MANAGER_SERVICE_CLASS
@@ -105,6 +113,11 @@ class BroadcastHook : IFrameworkHook {
             service.increaseALFilterCount(caller)
         }
     }
+
+    private fun hasBroadcastController(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA || runCatching {
+            Class.forName(BROADCAST_CONTROLLER_CLASS, false, SystemServerHook.classLoader)
+        }.isSuccess
 
     private fun changeUsbStateBroadcast(intent: Intent) {
         if (config.disableActivityLaunchProtection) return
