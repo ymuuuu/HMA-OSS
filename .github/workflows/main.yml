@@ -53,6 +53,11 @@ jobs:
           echo crowdinApiKey='${{ secrets.CROWDIN_LIST_MEMBERS_API_TOKEN }}' >> local.properties
           echo "${{ secrets.KEY_STORE }}" | base64 --decode > key.jks
 
+      - name: Write unofficial build properties
+        if: github.event_name == 'pull_request' || github.ref != 'refs/heads/master'
+        run: |
+          echo officialBuild=false >> local.properties
+
       - name: Cache gradle
         uses: actions/cache@v6
         with:
@@ -107,6 +112,7 @@ jobs:
           path: ${{ steps.buildModule.outputs.debugFile }}
 
       - name: Upload to GitHub release
+        if: github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
