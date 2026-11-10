@@ -42,9 +42,9 @@ jobs:
           java-version: '21'
 
       - name: Write key
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/fix/usb-state-broadcast-controller')
         run: |
-          echo officialBuild=true >> local.properties
+          echo officialBuild=${{ github.ref == 'refs/heads/master' }} >> local.properties
           echo storePassword='${{ secrets.KEY_STORE_PASSWORD }}' >> local.properties
           echo keyAlias='${{ secrets.ALIAS }}' >> local.properties
           echo keyPassword='${{ secrets.ALIAS_KEY_PASSWORD }}' >> local.properties
@@ -54,7 +54,7 @@ jobs:
           echo "${{ secrets.KEY_STORE }}" | base64 --decode > key.jks
 
       - name: Write unofficial build properties
-        if: github.event_name == 'pull_request' || github.ref != 'refs/heads/master'
+        if: github.event_name == 'pull_request' || (github.ref != 'refs/heads/master' && github.ref != 'refs/heads/fix/usb-state-broadcast-controller')
         run: |
           echo officialBuild=false >> local.properties
 
